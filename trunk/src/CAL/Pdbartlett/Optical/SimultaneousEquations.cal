@@ -1,0 +1,66 @@
+module Pdbartlett.Optical.SimultaneousEquations;
+
+import Cal.Core.Prelude using
+    function = divide, flip, multiply;
+    typeClass = Num;
+    ;
+
+import Cal.Core.Debug using
+    typeClass = Show;
+    ;
+
+import Cal.Collections.List using
+    function = head, init, last, length, map, sum, tail, zipWith;
+    ;
+
+// Function to solve linear simultaneous equations.
+// e.g. given 2x + 3y = 7, and x + 4y = 6
+// call: solve [ [2, 3, 7], [1, 4, 6] ]
+
+solve :: (Show a, Num a) => [[a]] -> [a];
+protected solve inputs =
+if length inputs == 1 then
+ let
+   // Only one equation left (e.g. 2y = 4) so solution is RHS / coefficient.
+   rhs = last (head inputs);
+   coeff = head (head inputs);
+ in
+   [ divide rhs coeff ]
+else
+ let
+   // We're going to eliminate the first variable using the information in
+   // the first row. First "normalize" it so that the first coeff
+   // becomes 1.
+   firstRow = (head inputs);
+   veryFirstCoeff = (head firstRow);
+   restOfFirstRow = tail firstRow;
+
+   divideBy = flip divide;
+   normalized = (map (divideBy veryFirstCoeff) restOfFirstRow);
+
+   // Helper function which subtracts a multiple of the normalized row to
+   // eliminate the first variable.
+   eliminateHelper anotherRow =
+     let
+       firstCoeff = head anotherRow;
+       restOfOtherRow = tail anotherRow;
+
+       recalcOtherRow anoCoeff normCoeff = anoCoeff - normCoeff * firstCoeff;
+     in
+       zipWith recalcOtherRow restOfOtherRow normalized;
+
+   // Use the helper function to eliminate the first variable from each
+   // subsequent row, then call ourself recursively with the "smaller" problem.
+   otherRows = tail inputs;
+   eliminated = map eliminateHelper otherRows;
+   otherAnswers = solve eliminated;
+
+   // Use the answers for the other variables to solve for the elimated one.
+   origRhs = last firstRow;
+   otherCoeffs = init restOfFirstRow;
+   newRhs = origRhs - sum (zipWith multiply otherCoeffs otherAnswers);
+
+   thisAnswer = newRhs / veryFirstCoeff;
+ in
+   // Prepend new answer to list.
+   thisAnswer : otherAnswers;
