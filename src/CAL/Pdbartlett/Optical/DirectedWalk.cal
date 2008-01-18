@@ -1,0 +1,72 @@
+module Pdbartlett.Optical.DirectedWalk;
+
+import Cal.Core.Prelude using
+    function = compare, fst, snd;
+    typeClass = Eq, Outputable;
+    typeConstructor = Double;
+    ;
+
+import Cal.Collections.List using
+    function = map, minimumBy, zip;
+    ;    
+
+data private Point2d =
+    private Point2d
+        x :: Double
+        y :: Double
+    deriving Eq, Outputable;
+
+getX :: Point2d -> Double;
+private getX pt =
+    case pt of
+      Point2d x _ -> x;
+    ;
+
+getY :: Point2d -> Double;
+private getY pt =
+    case pt of
+      Point2d _ y -> y;
+    ;
+
+directions :: [Point2d];
+private directions = [
+    (Point2d 0.0 0.0),
+    (Point2d 0.0 (-1.0)),
+    (Point2d 0.0 1.0),
+    (Point2d (-1.0) 0.0),
+    (Point2d (-1.0) (-1.0)),
+    (Point2d (-1.0) 1.0),
+    (Point2d 1.0 0.0),
+    (Point2d 1.0 (-1.0)),
+    (Point2d 1.0 1.0)];
+
+walk2d :: (Point2d -> Double) -> Point2d -> Double -> Double-> Point2d;
+private walk2d f start step limit =
+    if step <= limit then
+        start
+    else
+        let
+            points = map (takeStep start step) directions;
+            values = map f points;
+            pvlist = zip points values;
+            nextpv = minimumBy (\pv1 pv2 -> compare (snd pv1) (snd pv2)) pvlist;
+            nextstart = fst nextpv;
+            nextstep = if nextstart == start then step / 2 else step * 1.1;
+        in
+            walk2d f nextstart nextstep limit;
+
+takeStep :: Point2d -> Double -> Point2d -> Point2d;
+private takeStep start step direction =
+    (Point2d ((getX start) + step * (getX direction))
+             ((getY start) + step * (getY direction)));
+
+toMinimize :: Point2d -> Double;
+private toMinimize pt =
+    let
+        a = getX pt;
+        b = getY pt;
+    in
+        29 * a * a + 38 * b * b + 58 * a * b - 1440 * a - 1660 * b + 19225;
+
+test :: Point2d;
+public test = walk2d toMinimize (Point2d 0 0) 1.0 0.1;
